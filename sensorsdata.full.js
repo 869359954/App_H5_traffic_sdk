@@ -2099,8 +2099,7 @@ sd的各个方法，包含sdk的一些基本功能
       use_app_track: false,
       use_app_track_is_send: true,
       white_list:[],
-      track_type:'',
-      H5_server_url:''
+      H5verify:false
     },
     ignore_oom: true
   };
@@ -2142,9 +2141,7 @@ sd.initPara = function(para){
   }
 
   sd.para.preset_properties = _.extend({}, sd.para_default.preset_properties, latestObj, sd.para.preset_properties || {});
-  var app_track_config = {
-    H5_server_url : sd.para.server_url ? sd.para.server_url : ''
-  };
+  var app_track_config = {};
   if(sd.para.use_app_track){
     app_track_config.use_app_track = sd.para.use_app_track;
   }
@@ -2365,21 +2362,19 @@ sd.debug = {
       '2': name + 'Android或者iOS，没有暴露相应方法',
       '3.1': name + 'Android校验server_url失败',
       '3.2': name + 'iOS校验server_url失败',
-      '4.1': name + 'iOS 未设置 server_url',
-      '4.2': name + 'H5 校验 iOS server_url 失败',
-      '4.3': name + 'Android 未设置 server_url',
-      '4.4': name + 'H5 校验 Android server_url 失败',
-      '4.5': name + 'H5 数据成功发往 Android',
-      '4.6': name + 'H5 数据成功发往 iOS'
+      '4.1': name + 'H5 校验 iOS server_url 失败',
+      '4.2': name + 'H5 校验 Android server_url 失败',
+      '4.3': name + 'H5 数据成功发往 Android',
+      '4.4': name + 'H5 数据成功发往 iOS'
     };
     var output = obj.output;
     var step = obj.step;
-    var data = obj.data;
+    var data = obj.data || '';
+
     // 控制台输出
     if(output === 'all' || output === 'console'){
       sd.log(relation[step]);
     }
-    // 代码输出
     if((output === 'all' || output === 'code') && _.isObject(sd.para.is_debug) && sd.para.is_debug.apph5){
       if (!data.type || data.type.slice(0, 7) !== 'profile') {
         data.properties._jssdk_debug_info = 'apph5-' + String(step);
@@ -3310,24 +3305,41 @@ sendState.getSendCall = function(data, config, callback) {
 
   // 打通app传数据给app
   if(sd.para.use_app_track_config.use_app_track === true || sd.para.use_app_track_config.use_app_track === 'only'){
-    if(sd.para.use_app_track_config.track_type){
-      if(sd.para.use_app_track_config.track_type === 'iOS'){
-        sd.debug.apph5({
-          data: originData,
-          step: '4.6',
-          output:'all'
-        });
-        window.webkit.messageHandlers.sensorsdataNativeTracker.postMessage(JSON.stringify({callType:'app_h5_track', data: _.extend({server_url:sd.para.server_url}, originData)}));
-      }else if(sd.para.use_app_track_config.track_type === 'Android'){
+    //如果有新版，优先用新版
+    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.sensorsdataNativeTracker && _.isObject(window.SensorsData_iOS_JS_Bridge) && window.SensorsData_iOS_JS_Bridge.sensorsdata_app_server_url) {
+      if(sd.para.use_app_track_config.H5verify){
           sd.debug.apph5({
             data: originData,
-            step: '4.5',
+            step: '4.4',
             output:'all'
           });
-          SensorsData_APP_JS_Bridge.sensorsdata_track(JSON.stringify(_.extend({server_url:sd.para.server_url},originData)));
+          window.webkit.messageHandlers.sensorsdataNativeTracker.postMessage(JSON.stringify({callType:'app_h5_track', data: _.extend({server_url:sd.para.server_url}, originData)}));
+      }else{
+        sd.debug.apph5({
+          data: originData,
+          step: '4.1',
+          output:'all'
+        });
+        this.prepareServerUrl();
+      }
+    }else if(_.isObject(window.SensorsData_APP_New_H5_Bridge) && window.SensorsData_APP_New_H5_Bridge.sensorsdata_get_server_url && window.SensorsData_APP_New_H5_Bridge.sensorsdata_track){
+      if(sd.para.use_app_track_config.H5verify){
+        sd.debug.apph5({
+          data: originData,
+          step: '4.3',
+          output:'all'
+        });
+        SensorsData_APP_New_H5_Bridge.sensorsdata_track(JSON.stringify(_.extend({server_url:sd.para.server_url},originData)));
+      }else{
+        sd.debug.apph5({
+          data: originData,
+          step: '4.2',
+          output:'all'
+        });
+        this.prepareServerUrl();
       }
     }else if((typeof SensorsData_APP_JS_Bridge === 'object') && (SensorsData_APP_JS_Bridge.sensorsdata_verify || SensorsData_APP_JS_Bridge.sensorsdata_track)){
-      // 如果有新版方式，优先用新版
+      // 如果有有校验的版本，优先用校验版
       if(SensorsData_APP_JS_Bridge.sensorsdata_verify){
         // 如果校验通过则结束，不通过则降级改成h5继续发送
         if(!SensorsData_APP_JS_Bridge.sensorsdata_verify(JSON.stringify(_.extend({server_url:sd.para.server_url},originData)))){
@@ -4328,12 +4340,59 @@ var saNewUser = {
     }
 
   },
+  initAppH5status : function(){
+    function checkProjectAndHost(appUrl){
+      function getHostNameAndProject(url){
+        var obj = {
+          hostname:'',
+          project:''
+        };
+        try{
+          obj.hostname = _.URL(url).hostname;
+          obj.project = _.URL(url).searchParams.get('project') || 'default';
+        }catch(e){console.log(e)};
+        return obj;
+      }
+      var appObj = getHostNameAndProject(appUrl);
+      var H5Obj = getHostNameAndProject(sd.para.server_url);
+      if(appObj.hostname === H5Obj.hostname && appObj.project === H5Obj.project){
+         return true;
+      }else{
+        if(sd.para.use_app_track_config.white_list[0]){
+          for(var i=0;i<sd.para.use_app_track_config.white_list.length;i++){
+            var urlobj = getHostNameAndProject(sd.para.use_app_track_config.white_list[i]);
+            if(urlobj.hostname === appObj.hostname && urlobj.project === appObj.project){
+              return true;
+            }
+          }
+        }
+      }
+      
+    }
+    if(sd.para.use_app_track_config.use_app_track === true){
+      if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.sensorsdataNativeTracker && _.isObject(window.SensorsData_iOS_JS_Bridge) && window.SensorsData_iOS_JS_Bridge.sensorsdata_app_server_url) {
+          if(checkProjectAndHost(window.SensorsData_iOS_JS_Bridge.sensorsdata_app_server_url)){
+            sd.para.use_app_track_config.H5verify = true;
+          }
+         
+      }else if(_.isObject(window.SensorsData_APP_New_H5_Bridge) && window.SensorsData_APP_New_H5_Bridge.sensorsdata_get_server_url && window.SensorsData_APP_New_H5_Bridge.sensorsdata_track){
+        var app_server_url = window.SensorsData_APP_New_H5_Bridge.sensorsdata_get_server_url();
+        if(app_server_url){
+          if(checkProjectAndHost(app_server_url)){
+            sd.para.use_app_track_config.H5verify = true;
+          }
+        }
+     
+      }
+    } 
+  },
   prepare:function(todo){
     var match = location.search.match(/sa-request-id=([^&#]+)/);
     var type = location.search.match(/sa-request-type=([^&#]+)/);
     var web_url = location.search.match(/sa-request-url=([^&#]+)/);
 
     var me = this;
+    
     function isReady(data,type,url){
       if(sd.para.heatmap_url){
         _.loadScript({
@@ -4387,51 +4446,7 @@ var saNewUser = {
       heatmap.setNotice();
       isReady(sessionStorage.getItem('sensors_heatmap_id'),sessionStorage.getItem('sensors_heatmap_type'),location.href);
     }else{
-      if(sd.para.use_app_track_config.use_app_track === true){
-        if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.sensorsdataNativeTracker) {
-          if (_.isObject(window.SensorsData_iOS_JS_Bridge) && window.SensorsData_iOS_JS_Bridge.sensorsdata_app_server_url) {
-            if(window.SensorsData_iOS_JS_Bridge.sensorsdata_app_server_url === sd.para.use_app_track_config.H5_server_url){
-              sd.para.use_app_track_config.track_type = 'iOS';
-             }else if(sd.para.use_app_track_config.white_list.indexOf(window.SensorsData_iOS_JS_Bridge.sensorsdata_app_server_url) !== -1){
-              sd.para.use_app_track_config.track_type = 'iOS';
-             }else{
-              sd.debug.apph5({
-                data: {},
-                step: '4.2',
-                output:'all'
-              });
-             }         
-          }else{
-            sd.debug.apph5({
-              data: {},
-              step: '4.1',
-              output:'all'
-            });
-          }
-        }else if(_.isObject(window.SensorsData_APP_JS_Bridge) && window.SensorsData_APP_JS_Bridge.sensorsdata_get_server_url && window.SensorsData_APP_JS_Bridge.sensorsdata_track){
-          var app_server_url = window.SensorsData_APP_JS_Bridge.sensorsdata_get_server_url();
-          if(app_server_url){
-            if(app_server_url === sd.para.use_app_track_config.H5_server_url){
-              sd.para.use_app_track_config.track_type = 'Android';
-            }else if(sd.para.use_app_track_config.white_list.indexOf(app_server_url) !== -1){
-              sd.para.use_app_track_config.track_type = 'Android';
-            }else{
-              sd.debug.apph5({
-                data: {},
-                step: '4.4',
-                output:'all'
-              });
-            }
-          }else{
-            sd.debug.apph5({
-              data: {},
-              step: '4.3',
-              output:'all'
-            });
-          }
-          
-        }
-      }
+      me.initAppH5status();   
       todo();
       //进入热力图采集模式
       if (_.isObject(sd.para.heatmap)) {

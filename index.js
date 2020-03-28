@@ -56,12 +56,7 @@
     // server_url: ['https://test-syg.datasink.sensorsdata.cn/sa?project=liangshuang&token=27f1e21b78daf376','https://test-syg.datasink.sensorsdata.cn/sa?project=lixiang&token=27f1e21b78daf376'],
     debug_mode: false,
     debug_mode_upload: false,
-    // send_type:'ajax',
-    // use_app_track: true,
-    use_app_track_config:{
-        use_app_track:true,
-        white_list:['http://test-syg.datasink.sensorsdata.cn/sa?project=liangshuang&token=27f1e21b78daf376']
-    },
+    
     use_client_time: true,
     cross_subdomain: false,
     // batch_send:{
@@ -111,12 +106,14 @@
     // preset_properties:{
     //     title:false
     // }
+    // send_type:'ajax',
+    // use_app_track: true,
+    use_app_track_config:{
+        use_app_track:true,
+        white_list:['http://test-syg.datasink.sensorsdata.cn/sa?project=liangshuang&token=27f1e21b78daf376']
+    }
 });
-// sensors.registerPage({
-//      $title : '123tt'
-// });
 
-// sensors.quick('autoTrackWithoutProfile');
 sensors.quick('autoTrack', {
     $title: 'mytest'
 });
