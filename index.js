@@ -19,16 +19,7 @@
     for (var i = 0; i < ifs.length; i++) {
         w[n][ifs[i]] = w[n].call(null, ifs[i]);
     }
-    // var obtn = document.getElementById('test');
-    // console.log(obtn);
-    // obtn.onclick = function(){
-    //     x = d.createElement(s), y = d.getElementsByTagName(s)[0];
-    //     x.async = 1;
-    //     x.src = p;
-    //     x.setAttribute('charset','UTF-8');
-    //     w[n].para = para;
-    //     y.parentNode.insertBefore(x, y);
-    // };
+    
     if (!w[n]._t) {
         x = d.createElement(s), y = d.getElementsByTagName(s)[0];
         x.async = 1;
@@ -38,12 +29,7 @@
         y.parentNode.insertBefore(x, y);
     }
 })({
-    sdk_url:'./sensorsdata.full.js',
-    // sdk_url: 'https://869359954.github.io/sadefine/sensorsdata.full.js',
-    // sdk_url:'https://cdn.jsdelivr.net/npm/sa-sdk-javascript@1.14.20/sensorsdata.min.js',
-    // heatmap_url: 'https://cdn.jsdelivr.net/npm/sa-sdk-javascript@1.14.21/heatmap.min.js',
-    // sdk_url: './sdk-919/sensorsdata.full.js',
-    // heatmap_url: './sensors/heatmap.js',
+    sdk_url:'https://cdn.jsdelivr.net/npm/sa-sdk-javascript@1.15.9/sensorsdata.min.js',
     name: 'sensors',
     is_track_device_id: true,
     source_channel: ['bd_vid'],
@@ -53,17 +39,7 @@
     },
     // server_url:'',
     server_url: 'https://test-syg.datasink.sensorsdata.cn/sa?project=liangshuang&token=27f1e21b78daf376',
-    // server_url: ['https://test-syg.datasink.sensorsdata.cn/sa?project=liangshuang&token=27f1e21b78daf376','https://test-syg.datasink.sensorsdata.cn/sa?project=lixiang&token=27f1e21b78daf376'],
-    debug_mode: false,
-    debug_mode_upload: false,
     
-    use_client_time: true,
-    cross_subdomain: false,
-    // batch_send:{
-    //     datasend_timeout: 6000,  //一次请求超过多少秒的话自动取消，防止请求无响应。
-    //     send_interval: 12000,    //间隔几秒发一次数据。
-    //     one_send_max_length: 6  //一次请求最大发送几条数据，防止数据太大
-    // },
     is_track_single_page: false,
     // heatmap:{},
     heatmap: {
@@ -86,11 +62,6 @@
                 return true;
             }
         },
-        custom_property: function (element_target) {
-            return {
-                timepppp: new Date()
-            }
-        },
         collect_input: function (element_target) {
             //例如如果元素的 id 是a，就采集这个元素里的内容
             // if(element_target.id === 'loginid'){
@@ -103,14 +74,11 @@
         scroll_delay_time: 4000,
         useCapture: false
     },
-    // preset_properties:{
-    //     title:false
-    // }
-    // send_type:'ajax',
-    // use_app_track: true,
-    use_app_track_config:{
-        use_app_track:true,
-        white_list:['http://test-syg.datasink.sensorsdata.cn/sa?project=liangshuang&token=27f1e21b78daf376']
+    
+    app_js_bridge:{
+        white_list:['http://test-syg.datasink.sensorsdata.cn/sa?project=liangshuang&token=27f1e21b78daf376',
+                    'http://newsdktest.datasink.sensorsdata.cn/sa?project=wenquan&token=5a394d2405c147ca'
+        ]
     }
 });
 
